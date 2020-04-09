@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "BluetoothSerial.h"
 #include "quirc_internal.h"
 #include "esp_camera.h"
 #include "qr_recognize.h"
@@ -23,6 +24,8 @@
 #define CAM_PIN_PCLK    21
 
 #define CAM_XCLK_FREQ   20000000
+
+BluetoothSerial SerialBT;
 
 esp_err_t app_camera_init(){
   camera_config_t config = {};
@@ -86,6 +89,7 @@ void task_check_camera(void* param){
 }
 
 void setup() {
+  SerialBT.begin("M5Camera QR Scanner");
   Serial.begin(115200);
   Serial.println("Camera init");
   if (ESP_OK != app_camera_init()) {
@@ -98,5 +102,8 @@ void setup() {
 }
 
 void loop() {
-  delay(10000);
+  if(SerialBT.connected()){
+    SerialBT.println("Hello World");
+  }
+  delay(1000);
 }
