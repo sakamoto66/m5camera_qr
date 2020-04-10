@@ -105,13 +105,17 @@ void task_check_camera(void* param){
 }
 
 void test() {
+  Serial.println("A1");
   // Create the BLE Server
   BLEServer *pServer = BLEDevice::createServer();
+  Serial.println("A2");
   pServer->setCallbacks(new MyServerCallbacks());
 
+  Serial.println("B");
   // Create the BLE Service
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
+  Serial.println("C");
   // Create a BLE Characteristic
   pCharacteristic = pService->createCharacteristic(
                       CHARACTERISTIC_UUID,
@@ -121,13 +125,16 @@ void test() {
                       BLECharacteristic::PROPERTY_INDICATE
                     );
 
+  Serial.println("D");
   // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
   // Create a BLE Descriptor
   pCharacteristic->addDescriptor(new BLE2902());
 
+  Serial.println("E");
   // Start the service
   pService->start();
 
+  Serial.println("F");
   // Start advertising
   pServer->getAdvertising()->start();
   Serial.println("Waiting a client connection to notify...");
@@ -135,6 +142,7 @@ void test() {
 
 void setup() {
   Serial.begin(115200);
+  BLEDevice::init("M5Camera QR Scanner");
   test();
   /*Serial.println("Camera init");
   if (ESP_OK != app_camera_init()) {

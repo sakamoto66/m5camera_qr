@@ -19,8 +19,8 @@ var characteristic;
 //micro:bit BLE UUID
 //var LED_SERVICE_UUID                        = 'e95dd91d-251d-470a-a062-fa1922dfa9a8';
 //var LED_TEXT_CHARACTERISTIC_UUID            = 'e95d93ee-251d-470a-a062-fa1922dfa9a8';
-var LED_SERVICE_UUID             = "D5875408-FA51-4763-A75D-7D33CECEBC31";
-var LED_TEXT_CHARACTERISTIC_UUID = "A4F01D8C-A037-43B6-9050-1876A8C23584";
+var LED_SERVICE_UUID             = "d5875408-fa51-4763-a75d-7d33cecebc31";
+var LED_TEXT_CHARACTERISTIC_UUID = "a4f01d8c-a037-43b6-9050-1876a8c23584";
 
 //ボタンイベントリスナー
 d3.select("#connect").on("click", connect);
@@ -36,7 +36,7 @@ function connect() {
     {services: [LED_SERVICE_UUID]},
     {namePrefix: "M5Camera QR Scanner"}
   ];
-  
+
   navigator.bluetooth.requestDevice(options)
   .then(device => {
     bluetoothDevice = device;
