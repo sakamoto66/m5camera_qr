@@ -1,5 +1,6 @@
 #include <Arduino.h>
-#include "BluetoothSerial.h"
+#include "BLEDevice.h"
+#include "BLE2902.h"
 #include "quirc_internal.h"
 #include "esp_camera.h"
 #include "qr_recognize.h"
@@ -25,7 +26,22 @@
 
 #define CAM_XCLK_FREQ   20000000
 
-BluetoothSerial SerialBT;
+#define SERVICE_UUID        "D5875408-FA51-4763-A75D-7D33CECEBC31"
+#define CHARACTERISTIC_UUID "A4F01D8C-A037-43B6-9050-1876A8C23584"
+
+BLECharacteristic *pCharacteristic;
+bool deviceConnected = false;
+uint8_t value = 0;
+
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+      deviceConnected = true;
+    };
+
+    void onDisconnect(BLEServer* pServer) {
+      deviceConnected = false;
+    }
+};
 
 esp_err_t app_camera_init(){
   camera_config_t config = {};
@@ -88,10 +104,39 @@ void task_check_camera(void* param){
   }
 }
 
+void test() {
+  // Create the BLE Server
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  // Create the BLE Service
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+
+  // Create a BLE Characteristic
+  pCharacteristic = pService->createCharacteristic(
+                      CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_READ   |
+                      BLECharacteristic::PROPERTY_WRITE  |
+                      BLECharacteristic::PROPERTY_NOTIFY |
+                      BLECharacteristic::PROPERTY_INDICATE
+                    );
+
+  // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+  // Create a BLE Descriptor
+  pCharacteristic->addDescriptor(new BLE2902());
+
+  // Start the service
+  pService->start();
+
+  // Start advertising
+  pServer->getAdvertising()->start();
+  Serial.println("Waiting a client connection to notify...");
+}
+
 void setup() {
-  SerialBT.begin("M5Camera QR Scanner");
   Serial.begin(115200);
-  Serial.println("Camera init");
+  test();
+  /*Serial.println("Camera init");
   if (ESP_OK != app_camera_init()) {
     Serial.println("Camera init failed");
     return;
@@ -99,11 +144,19 @@ void setup() {
 
   // start task of check qrcode
   xTaskCreatePinnedToCore(task_check_camera, "task_check_camera", 102400, NULL, 5, NULL, 1);
+  //*/
 }
 
 void loop() {
-  if(SerialBT.connected()){
-    SerialBT.println("Hello World");
+  if (deviceConnected) {
+    Serial.printf("*** NOTIFY: %d ***\n", value);
+    char buffer[10];
+    sprintf(buffer, "{\"val\":%d}", value);
+    Serial.printf(buffer);
+    pCharacteristic->setValue(buffer);
+    pCharacteristic->notify();
+    //pCharacteristic->indicate();
+    value++;
   }
-  delay(1000);
+  delay(2000);
 }
