@@ -55,10 +55,20 @@ function connect() {
     console.log("characteristic", chara)
     alert("BLE接続が完了しました。");
     characteristic = chara;
+    return characteristic.startNotifications().then(_ => {
+      log('> Notifications started');
+      characteristic.addEventListener('characteristicvaluechanged',
+          handleNotifications);
+    });
   })
   .catch(error => {
     console.log(error);
   });
+}
+
+function handleNotifications(event) {
+  let value = event.target.value;
+  log('> ' + value);
 }
 
 //LEDに表示するメッセージを送信
