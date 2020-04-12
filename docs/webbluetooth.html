@@ -2,88 +2,101 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Web Bluetooth API のテスト</title>
+<title>Web Bluetooth API Test</title>
+<style>
+  #main{
+    display: flex;
+    -webkit-justify-content: flex-start;
+    justify-content: flex-start;
+  }
+  #main > div:nth-of-type(2) {
+    -webkit-flex-grow: 1;
+    flex-grow: 1;
+  }
+</style>
 </head>
 
 <body>
-<button id="connect">接続</button>
-<button id="disconnect">切断</button>
-<input id="message" value="hello" />
-<button id="send">送信</button>
+<div id="main">
+  <div>
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXIAAAFyAQMAAADS6sNKAAAABlBMVEX///8AAABVwtN+AAABsElEQVR4nO2aSY7FMAhELfkAPlKuniPlAJH43xTYmaTedXdFVYtMfs4mgAGnFEmSJEmS/kYW2vtNzau2F1tbjq3ieXncfIGybLWPVSuLU20/IeI5+ZZjnf8eAvBnbh7iX8L7GCgzOL341/D5uAf1bhni38H7Cf7uVxZBvfwc/8X/fz6Urn485Jh4Xv40M317sf0REU/IN1+b+2dvYRnQcg3l4jn5vixvY6aHcvDP/i6eiXf0VDtVi3oKh5wunpNfYQWuW708b8Vz8tHlytwLAOopV7vGB/Fc/IznnoWhqMqm5tOiLZ6Jv4Tygz2M9rV4Zh6msF12ISpy8DQP8az87HLFdBut6u2YmYkn5Us7Ztnw8iia65M9iOfisUpbNkWicn5uhYin4+HgUTbV4fT5jns+Jp6Lxw3W5nB1hHLXeq2nxHPxh5mI4ki/g5pX4jn5+O42iypXtbmpeH2reCYeQEtTGL8CzFT7MT6IZ+GxlTh609n+Cle/24N4Tj5SbddYvsW/h/exxdIeZvq9iifm/dT2/AEgdyYiH5s7T+Ip+ZGPxaQZysW/gJckSZIk6Tf1AeFUsZWYIBXwAAAAAElFTkSuQmCC" />
+  </div>
+  <div>
+    <div>
+      <button id="connect">connect</button>
+      <button id="disconnect">disconnect</button>
+    </div>
+    <ol id="log"></ol>
+  </div>
+</div>
 
 <script src="//cdnjs.cloudflare.com/ajax/libs/d3/4.3.0/d3.min.js"></script>
 <script>
-// 情報元： https://shimz.me/blog/microbit/5456
 var bluetoothDevice;
 var characteristic;
-//micro:bit BLE UUID
-//var LED_SERVICE_UUID                        = 'e95dd91d-251d-470a-a062-fa1922dfa9a8';
-//var LED_TEXT_CHARACTERISTIC_UUID            = 'e95d93ee-251d-470a-a062-fa1922dfa9a8';
-var LED_SERVICE_UUID             = "d5875408-fa51-4763-a75d-7d33cecebc31";
-var LED_TEXT_CHARACTERISTIC_UUID = "a4f01d8c-a037-43b6-9050-1876a8c23584";
+var SERVICE_UUID             = "d5875408-fa51-4763-a75d-7d33cecebc31";
+var CHARACTERISTIC_UUID = "a4f01d8c-a037-43b6-9050-1876a8c23584";
 
 //ボタンイベントリスナー
 d3.select("#connect").on("click", connect);
 d3.select("#disconnect").on("click", disconnect);
-d3.select("#send").on("click", sendMessage);
 
-//micro:bitに接続する
+function log(mssg){
+  var args = Array.prototype.slice.call(arguments);
+  let $q = document.querySelector("#log");
+  let itm = document.createElement("li");
+  itm.innerText = args.join(" ");
+  $q.append(itm);
+}
+
 function connect() {
   let options = {};
 
   //options.acceptAllDevices = true;
   options.filters = [
-    {services: [LED_SERVICE_UUID]},
+    {services: [SERVICE_UUID]},
     {namePrefix: "M5Camera QR Scanner"}
   ];
 
   navigator.bluetooth.requestDevice(options)
   .then(device => {
     bluetoothDevice = device;
-    console.log("device", device);
+    log("device", device);
     return device.gatt.connect();
   })
   .then(server =>{
-    console.log("server", server)
-    return server.getPrimaryService(LED_SERVICE_UUID);
+    log("server", server);
+    return server.getPrimaryService(SERVICE_UUID);
   })
   .then(service => {
-    console.log("service", service)
-    return service.getCharacteristic(LED_TEXT_CHARACTERISTIC_UUID)
+    log("service", service);
+    log("BLE connect");
+    return service.getCharacteristic(CHARACTERISTIC_UUID)
   })
   .then(chara => {
-    console.log("characteristic", chara)
-    alert("BLE接続が完了しました。");
+    log("characteristic", chara)
     characteristic = chara;
     return characteristic.startNotifications().then(_ => {
-      log('> Notifications started');
+      log('Notifications started');
       characteristic.addEventListener('characteristicvaluechanged',
           handleNotifications);
     });
   })
   .catch(error => {
-    console.log(error);
+    log(error);
   });
 }
 
 function handleNotifications(event) {
   let value = event.target.value;
-  log('> ' + value);
+  let str = new TextDecoder().decode(value);
+  log('[notify]', str);
 }
 
-//LEDに表示するメッセージを送信
-function sendMessage() {
-  if (!bluetoothDevice || !bluetoothDevice.gatt.connected || !characteristic) return ;
-  var text = document.querySelector("#message").value;
-  var arrayBuffe = new TextEncoder().encode(text);
-  characteristic.writeValue(arrayBuffe);
-}
-
-//BLE切断処理
 function disconnect() {
   if (!bluetoothDevice || !bluetoothDevice.gatt.connected) return ;
   bluetoothDevice.gatt.disconnect();
-  alert("BLE接続を切断しました。")
+  log("BLE disconnect");
 }
 </script>
 </body>

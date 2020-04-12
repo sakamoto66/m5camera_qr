@@ -74,7 +74,7 @@ void dump_qrcode_cells(const struct quirc_code *code) {
 }
 
 void dump_qrcode_info(const struct quirc_data *data) {
-	printf("----------------------------------");
+	printf("----------------------------------\n");
 	printf("    Version: %d\n", data->version);
 	printf("    ECC level: %c\n", "MLHQ"[data->ecc_level]);
 	printf("    Mask: %d\n", data->mask);

@@ -26,8 +26,8 @@
 
 #define CAM_XCLK_FREQ   20000000
 
-#define SERVICE_UUID        "D5875408-FA51-4763-A75D-7D33CECEBC31"
-#define CHARACTERISTIC_UUID "A4F01D8C-A037-43B6-9050-1876A8C23584"
+#define SERVICE_UUID        "d5875408-fa51-4763-a75d-7d33cecebc31"
+#define CHARACTERISTIC_UUID "a4f01d8c-a037-43b6-9050-1876a8c23584"
 
 BLECharacteristic *pCharacteristic;
 bool deviceConnected = false;
@@ -42,6 +42,18 @@ class MyServerCallbacks: public BLEServerCallbacks {
       deviceConnected = false;
     }
 };
+
+void print_esp_info(){
+  double_t scale = 1024.0;
+  esp_chip_info_t chip_info;
+  esp_chip_info(&chip_info);
+
+  Serial.printf("Cpu   : (core) %d, (rev) %d, (freq) %d MHz\n", chip_info.cores, ESP.getChipRevision(), ESP.getCpuFreqMHz());
+  Serial.printf("Build : (sdk) %s, (espidf) %s\n", ESP.getSdkVersion(), esp_get_idf_version());
+  Serial.printf("SRam  : %6.1lf / %6.1lf KB\n", ESP.getFreeHeap()/scale, ESP.getHeapSize()/scale);
+  Serial.printf("SPIRam: %6.1lf / %6.1lf KB\n", ESP.getFreePsram()/scale, ESP.getPsramSize()/scale);
+  Serial.printf("Flash :          %6.1lf KB %5.1lf MHz\n", ESP.getFlashChipSize()/scale, ESP.getFlashChipSpeed()/1000000.0);
+}
 
 esp_err_t app_camera_init(){
   camera_config_t config = {};
@@ -77,6 +89,17 @@ esp_err_t app_camera_init(){
   return esp_camera_init(&config);
 }
 
+void send_ble(const struct quirc_data *data){
+  if (!deviceConnected) {
+    return;
+  }
+  char buffer[1024];
+  sprintf(buffer, "%s", data->payload);
+  pCharacteristic->setValue(buffer);
+  pCharacteristic->notify();
+  //pCharacteristic->indicate();
+}
+
 void on_accept_qrcode(int num, const struct quirc_code *qcode){
   struct quirc_data data;
   quirc_decode_error_t err;
@@ -88,10 +111,12 @@ void on_accept_qrcode(int num, const struct quirc_code *qcode){
     Serial.println();
   } else {
     dump_qrcode_info(&data);
+    send_ble(&data);
   }
 }
 
 void task_check_camera(void* param){
+  Serial.println("task_check_camera start");
   while(true){
     camera_fb_t* fb = esp_camera_fb_get();
     if(fb) {
@@ -104,18 +129,16 @@ void task_check_camera(void* param){
   }
 }
 
-void test() {
-  Serial.println("A1");
+void app_ble_init() {
+  BLEDevice::init("M5Camera QR Scanner");
+
   // Create the BLE Server
   BLEServer *pServer = BLEDevice::createServer();
-  Serial.println("A2");
   pServer->setCallbacks(new MyServerCallbacks());
 
-  Serial.println("B");
   // Create the BLE Service
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
-  Serial.println("C");
   // Create a BLE Characteristic
   pCharacteristic = pService->createCharacteristic(
                       CHARACTERISTIC_UUID,
@@ -125,46 +148,34 @@ void test() {
                       BLECharacteristic::PROPERTY_INDICATE
                     );
 
-  Serial.println("D");
   // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
   // Create a BLE Descriptor
   pCharacteristic->addDescriptor(new BLE2902());
 
-  Serial.println("E");
   // Start the service
   pService->start();
 
-  Serial.println("F");
   // Start advertising
   pServer->getAdvertising()->start();
-  Serial.println("Waiting a client connection to notify...");
 }
 
 void setup() {
   Serial.begin(115200);
-  BLEDevice::init("M5Camera QR Scanner");
-  test();
-  /*Serial.println("Camera init");
+
+  Serial.println("Camera init");
   if (ESP_OK != app_camera_init()) {
     Serial.println("Camera init failed");
     return;
   }
 
+  Serial.println("BLE init");
+  app_ble_init();
+
+  print_esp_info();
   // start task of check qrcode
-  xTaskCreatePinnedToCore(task_check_camera, "task_check_camera", 102400, NULL, 5, NULL, 1);
-  //*/
+  xTaskCreatePinnedToCore(task_check_camera, "task_check_camera", 1024*50, NULL, 5, NULL, 1);
 }
 
 void loop() {
-  if (deviceConnected) {
-    Serial.printf("*** NOTIFY: %d ***\n", value);
-    char buffer[10];
-    sprintf(buffer, "{\"val\":%d}", value);
-    Serial.printf(buffer);
-    pCharacteristic->setValue(buffer);
-    pCharacteristic->notify();
-    //pCharacteristic->indicate();
-    value++;
-  }
-  delay(2000);
+  delay(10000);
 }
