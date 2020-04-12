@@ -117,15 +117,22 @@ void on_accept_qrcode(int num, const struct quirc_code *qcode){
 
 void task_check_camera(void* param){
   Serial.println("task_check_camera start");
+  Serial.println("If test, execute command 'python3 -m http.server 80' from console.");
+  Serial.println("And, open http://localhost/docs/webbluetooth.html from chrome.");
   while(true){
+    if(!deviceConnected){
+      delay(1000);
+      continue;
+    }
     camera_fb_t* fb = esp_camera_fb_get();
     if(fb) {
       qr_recoginze(fb, on_accept_qrcode);
       esp_camera_fb_return(fb);
+      delay(100);
     } else {
       Serial.println("Camera capture failed");
+      delay(1000);
     }
-    delay(1000);
   }
 }
 

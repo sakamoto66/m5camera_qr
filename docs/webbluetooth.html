@@ -13,6 +13,19 @@
     -webkit-flex-grow: 1;
     flex-grow: 1;
   }
+  #log {
+    display: flex;
+    flex-direction: column;
+    flex-flow: column-reverse;
+    margin:0;
+    padding:0;
+  }
+  #log > li{
+    display:block;
+    margin:0;
+    padding:0;
+  }
+
 </style>
 </head>
 
@@ -45,8 +58,16 @@ function log(mssg){
   var args = Array.prototype.slice.call(arguments);
   let $q = document.querySelector("#log");
   let itm = document.createElement("li");
-  itm.innerText = args.join(" ");
+  itm.innerText = "["+his()+"] "+args.join(" ");
   $q.append(itm);
+}
+
+function his(){
+  var now = new Date();
+  var h = now.getHours();
+  var m = now.getMinutes();
+  var s = now.getSeconds();
+  return [("00"+h).slice(-2),("00"+m).slice(-2),("00"+s).slice(-2)].join(":");
 }
 
 function connect() {
